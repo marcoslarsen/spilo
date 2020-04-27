@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS dfm_execution
   end_time       TIMESTAMP,
   state          VARCHAR(64)   NOT NULL,
   username       VARCHAR(250)  NOT NULL,
+  external_id    VARCHAR(512),
   schedule_id    BIGINT,
   PRIMARY KEY (id),
   FOREIGN KEY (data_flow_id) REFERENCES dfm_dataflow (id),
@@ -129,8 +130,9 @@ CREATE TABLE IF NOT EXISTS dfm_execution_log
 CREATE INDEX IF NOT EXISTS dfm_exec_log_exec_id_idx ON dfm_execution_log (execution_id);
 CREATE INDEX IF NOT EXISTS dfm_ex_log_ex_time_idx ON dfm_execution_log (execution_id, log_time);
 
+-- Table revinfo
 CREATE SEQUENCE IF NOT EXISTS hibernate_sequence START 1 INCREMENT 1;
-CREATE TABLE revinfo
+CREATE TABLE IF NOT EXISTS revinfo
 (
   id        INTEGER NOT NULL,
   TIMESTAMP BIGINT  NOT NULL,
@@ -169,6 +171,7 @@ CREATE TABLE IF NOT EXISTS dfm_execution_aud
   start_time     TIMESTAMP,
   state          VARCHAR(64),
   username       VARCHAR(250),
+  external_id    VARCHAR(512),
   data_flow_id   BIGINT,
   schedule_id    BIGINT,
   PRIMARY KEY (id, REV),
