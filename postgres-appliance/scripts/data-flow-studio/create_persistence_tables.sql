@@ -1,5 +1,40 @@
 SET search_path TO public;
 
+-- Table dfm_configuration_meta
+CREATE SEQUENCE IF NOT EXISTS dfm_configuration_meta_seq INCREMENT 10 START 1;
+CREATE TABLE dfm_configuration_meta (
+  id                      BIGINT        NOT NULL,
+  PRIMARY KEY (id)
+);
+
+-- Table dfm_parameter_group
+CREATE SEQUENCE IF NOT EXISTS dfm_parameter_group_seq INCREMENT 10 START 1;
+CREATE TABLE IF NOT EXISTS dfm_parameter_group (
+  id                      BIGINT        NOT NULL,
+  name                    VARCHAR(2048) NOT NULL,
+  configuration_id        BIGINT,
+  PRIMARY KEY (id),
+  FOREIGN KEY (configuration_id) REFERENCES dfm_configuration_meta (id)
+);
+CREATE INDEX IF NOT EXISTS dfm_parameter_group_configuration_id_idx ON dfm_parameter_group(configuration_id);
+
+-- Table dfm_parameter_meta
+CREATE SEQUENCE IF NOT EXISTS dfm_parameter_meta_seq INCREMENT 20 START 1;
+CREATE TABLE IF NOT EXISTS dfm_parameter_meta (
+  id                      BIGINT        NOT NULL,
+  parameter_key           VARCHAR(250)  NOT NULL,
+  parameter_name          VARCHAR(250)  NOT NULL,
+  default_value           VARCHAR(2048),
+  description             VARCHAR(1024),
+  parameter_type          VARCHAR(64),
+  mandatory               BOOLEAN,
+  type_options            VARCHAR(1024),
+  group_id                BIGINT        NOT NULL,
+  PRIMARY KEY (id),
+  FOREIGN KEY (group_id) REFERENCES dfm_parameter_group (id)
+);
+CREATE INDEX IF NOT EXISTS dfm_parameter_meta_group_id_idx ON dfm_parameter_meta(group_id);
+
 -- Table dfm_dataflow
 CREATE SEQUENCE IF NOT EXISTS dfm_dataflow_seq INCREMENT 10 START 1;
 CREATE TABLE IF NOT EXISTS dfm_dataflow
@@ -10,9 +45,11 @@ CREATE TABLE IF NOT EXISTS dfm_dataflow
   entry_point             VARCHAR(2048),
   data_flow_type          VARCHAR(64)   NOT NULL,
   source                  BYTEA,
-  configuration_meta_json TEXT,
-  PRIMARY KEY (id)
+  configuration_id   BIGINT,
+  PRIMARY KEY (id),
+  FOREIGN KEY (configuration_id) REFERENCES dfm_configuration_meta (id)
 );
+CREATE INDEX IF NOT EXISTS dfm_dataflow_configuration_id_idx ON dfm_dataflow(configuration_id);
 CREATE INDEX IF NOT EXISTS dfm_dataflow_name_uc_idx ON dfm_dataflow (UPPER(name));
 
 -- Table dfm_schedule
@@ -130,9 +167,20 @@ CREATE TABLE IF NOT EXISTS dfm_execution_log
 CREATE INDEX IF NOT EXISTS dfm_exec_log_exec_id_idx ON dfm_execution_log (execution_id);
 CREATE INDEX IF NOT EXISTS dfm_ex_log_ex_time_idx ON dfm_execution_log (execution_id, log_time);
 
--- Table revinfo
-CREATE SEQUENCE IF NOT EXISTS hibernate_sequence START 1 INCREMENT 1;
-CREATE TABLE IF NOT EXISTS revinfo
+
+
+
+
+
+
+
+
+
+
+
+-- Table dfm_revision_info
+CREATE SEQUENCE IF NOT EXISTS dfm_revision_info_seq START 1 INCREMENT 10;
+CREATE TABLE IF NOT EXISTS dfm_revision_info
 (
   id        INTEGER NOT NULL,
   TIMESTAMP BIGINT  NOT NULL,
@@ -152,14 +200,58 @@ CREATE TABLE IF NOT EXISTS dfm_dataflow_aud
   entry_point             VARCHAR(2048),
   data_flow_type          VARCHAR(64)   NOT NULL,
   source                  BYTEA,
-  configuration_meta_json TEXT,
+  configuration_id        BIGINT,
   PRIMARY KEY (id, rev),
-  FOREIGN KEY (revend) REFERENCES revinfo (id),
-  FOREIGN KEY (rev) REFERENCES revinfo (id)
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
+);
+
+-- Table dfm_configuration_meta_aud
+CREATE TABLE IF NOT EXISTS dfm_configuration_meta_aud
+(
+  id             BIGINT  NOT NULL,
+  REV            INTEGER NOT NULL,
+  REVTYPE        SMALLINT,
+  REVEND         INTEGER,
+  PRIMARY KEY (id, REV),
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
+);
+
+-- Table dfm_parameter_group_aud
+CREATE TABLE IF NOT EXISTS dfm_parameter_group_aud (
+  id                BIGINT        NOT NULL,
+  REV               INTEGER NOT NULL,
+  REVTYPE           SMALLINT,
+  REVEND            INTEGER,
+  name              VARCHAR(2048) NOT NULL,
+  configuration_id  BIGINT,
+  PRIMARY KEY (id, REV),
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
+);
+
+-- Table dfm_parameter_meta
+CREATE TABLE IF NOT EXISTS dfm_parameter_meta_aud (
+  id             BIGINT        NOT NULL,
+  REV            INTEGER NOT NULL,
+  REVTYPE        SMALLINT,
+  REVEND         INTEGER,
+  parameter_key           VARCHAR(250)  NOT NULL,
+  parameter_name          VARCHAR(250)  NOT NULL,
+  default_value           VARCHAR(2048),
+  description             VARCHAR(1024),
+  parameter_type          VARCHAR(64),
+  mandatory               BOOLEAN,
+  type_options            VARCHAR(1024),
+  group_id                BIGINT        NOT NULL,
+  PRIMARY KEY (id, REV),
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
 );
 
 -- Table dfm_execution_aud
-CREATE TABLE IF NOT EXISTS dfm_execution_aud
+create table IF NOT EXISTS dfm_execution_aud
 (
   id             BIGINT  NOT NULL,
   REV            INTEGER NOT NULL,
@@ -175,12 +267,12 @@ CREATE TABLE IF NOT EXISTS dfm_execution_aud
   data_flow_id   BIGINT,
   schedule_id    BIGINT,
   PRIMARY KEY (id, REV),
-  FOREIGN KEY (revend) REFERENCES revinfo (id),
-  FOREIGN KEY (rev) REFERENCES revinfo (id)
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
 );
 
 -- Table dfm_execution_log_aud
-CREATE TABLE IF NOT EXISTS dfm_execution_log_aud
+create table IF NOT EXISTS dfm_execution_log_aud
 (
   id           BIGINT  NOT NULL,
   REV          INTEGER NOT NULL,
@@ -191,12 +283,12 @@ CREATE TABLE IF NOT EXISTS dfm_execution_log_aud
   message      TEXT,
   execution_id BIGINT,
   PRIMARY KEY (id, REV),
-  FOREIGN KEY (revend) REFERENCES revinfo (id),
-  FOREIGN KEY (rev) REFERENCES revinfo (id)
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
 );
 
 -- Table dfm_execution_parameter_aud
-CREATE TABLE IF NOT EXISTS dfm_execution_parameter_aud
+create table IF NOT EXISTS dfm_execution_parameter_aud
 (
   id              BIGINT  NOT NULL,
   REV             INTEGER NOT NULL,
@@ -206,12 +298,12 @@ CREATE TABLE IF NOT EXISTS dfm_execution_parameter_aud
   parameter_value VARCHAR(2048),
   execution_id    BIGINT,
   PRIMARY KEY (id, REV),
-  FOREIGN KEY (revend) REFERENCES revinfo (id),
-  FOREIGN KEY (rev) REFERENCES revinfo (id)
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
 );
 
 -- Table dfm_schedule_aud
-CREATE TABLE IF NOT EXISTS dfm_schedule_aud
+create table IF NOT EXISTS dfm_schedule_aud
 (
   id                  BIGINT  NOT NULL,
   REV                 INTEGER NOT NULL,
@@ -234,12 +326,12 @@ CREATE TABLE IF NOT EXISTS dfm_schedule_aud
   username            VARCHAR(250),
   data_flow_id        BIGINT,
   PRIMARY KEY (id, REV),
-  FOREIGN KEY (revend) REFERENCES revinfo (id),
-  FOREIGN KEY (rev) REFERENCES revinfo (id)
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
 );
 
 -- Table dfm_schedule_parameter_aud
-CREATE TABLE IF NOT EXISTS dfm_schedule_parameter_aud
+create table IF NOT EXISTS dfm_schedule_parameter_aud
 (
   id              BIGINT  NOT NULL,
   REV             INTEGER NOT NULL,
@@ -249,12 +341,12 @@ CREATE TABLE IF NOT EXISTS dfm_schedule_parameter_aud
   parameter_value VARCHAR(2048),
   schedule_id     BIGINT,
   PRIMARY KEY (id, REV),
-  FOREIGN KEY (revend) REFERENCES revinfo (id),
-  FOREIGN KEY (rev) REFERENCES revinfo (id)
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
 );
 
 -- Table dfm_schedule_weekday_aud
-CREATE TABLE IF NOT EXISTS dfm_schedule_weekday_aud
+create table IF NOT EXISTS dfm_schedule_weekday_aud
 (
   id          BIGINT  NOT NULL,
   REV         INTEGER NOT NULL,
@@ -263,6 +355,6 @@ CREATE TABLE IF NOT EXISTS dfm_schedule_weekday_aud
   week_day    VARCHAR(64),
   schedule_id BIGINT,
   PRIMARY KEY (id, REV),
-  FOREIGN KEY (revend) REFERENCES revinfo (id),
-  FOREIGN KEY (rev) REFERENCES revinfo (id)
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
 );
