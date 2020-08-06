@@ -2,7 +2,7 @@ SET search_path TO public;
 
 -- Table dfm_configuration_meta
 CREATE SEQUENCE IF NOT EXISTS dfm_configuration_meta_seq INCREMENT 10 START 1;
-CREATE TABLE dfm_configuration_meta (
+CREATE TABLE IF NOT EXISTS dfm_configuration_meta (
   id                      BIGINT        NOT NULL,
   PRIMARY KEY (id)
 );
@@ -167,6 +167,20 @@ CREATE TABLE IF NOT EXISTS dfm_execution_log
 CREATE INDEX IF NOT EXISTS dfm_exec_log_exec_id_idx ON dfm_execution_log (execution_id);
 CREATE INDEX IF NOT EXISTS dfm_ex_log_ex_time_idx ON dfm_execution_log (execution_id, log_time);
 
+-- Table dfm_execution_status_change
+CREATE SEQUENCE IF NOT EXISTS dfm_execution_status_change_seq INCREMENT 20 START 1;
+CREATE TABLE IF NOT EXISTS dfm_execution_status_change
+(
+  id           BIGINT      NOT NULL,
+  execution_id BIGINT      NOT NULL,
+  state        VARCHAR(64) NOT NULL,
+  state_time   TIMESTAMP   NOT NULL,
+  type         VARCHAR(64) NOT NULL,
+  PRIMARY KEY (id),
+  FOREIGN KEY (execution_id) REFERENCES dfm_execution (id)
+);
+CREATE INDEX IF NOT EXISTS dfm_exec_state_exec_id_idx ON dfm_execution_status_change (execution_id);
+CREATE INDEX IF NOT EXISTS dfm_ex_state_time_idx ON dfm_execution_status_change (execution_id, state_time);
 
 
 
@@ -195,10 +209,10 @@ CREATE TABLE IF NOT EXISTS dfm_dataflow_aud
   rev                     INTEGER       NOT NULL,
   revtype                 SMALLINT,
   revend                  INTEGER,
-  name                    VARCHAR(2048) NOT NULL,
+  name                    VARCHAR(2048),
   description             VARCHAR(2048),
   entry_point             VARCHAR(2048),
-  data_flow_type          VARCHAR(64)   NOT NULL,
+  data_flow_type          VARCHAR(64),
   source                  BYTEA,
   configuration_id        BIGINT,
   PRIMARY KEY (id, rev),
@@ -224,7 +238,7 @@ CREATE TABLE IF NOT EXISTS dfm_parameter_group_aud (
   REV               INTEGER NOT NULL,
   REVTYPE           SMALLINT,
   REVEND            INTEGER,
-  name              VARCHAR(2048) NOT NULL,
+  name              VARCHAR(2048),
   configuration_id  BIGINT,
   PRIMARY KEY (id, REV),
   FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
@@ -237,14 +251,14 @@ CREATE TABLE IF NOT EXISTS dfm_parameter_meta_aud (
   REV            INTEGER NOT NULL,
   REVTYPE        SMALLINT,
   REVEND         INTEGER,
-  parameter_key           VARCHAR(250)  NOT NULL,
-  parameter_name          VARCHAR(250)  NOT NULL,
+  parameter_key           VARCHAR(250),
+  parameter_name          VARCHAR(250),
   default_value           VARCHAR(2048),
   description             VARCHAR(1024),
   parameter_type          VARCHAR(64),
   mandatory               BOOLEAN,
   type_options            VARCHAR(1024),
-  group_id                BIGINT        NOT NULL,
+  group_id                BIGINT,
   PRIMARY KEY (id, REV),
   FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
   FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
@@ -297,6 +311,22 @@ create table IF NOT EXISTS dfm_execution_parameter_aud
   parameter_key   VARCHAR(250),
   parameter_value VARCHAR(2048),
   execution_id    BIGINT,
+  PRIMARY KEY (id, REV),
+  FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
+  FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
+);
+
+-- Table dfm_execution_status_change_aud
+create table IF NOT EXISTS dfm_execution_status_change_aud
+(
+  id           BIGINT  NOT NULL,
+  REV          INTEGER NOT NULL,
+  REVTYPE      SMALLINT,
+  REVEND       INTEGER,
+  execution_id BIGINT,
+  state        VARCHAR(64),
+  state_time   TIMESTAMP,
+  type         VARCHAR(64),
   PRIMARY KEY (id, REV),
   FOREIGN KEY (revend) REFERENCES dfm_revision_info (id),
   FOREIGN KEY (rev) REFERENCES dfm_revision_info (id)
